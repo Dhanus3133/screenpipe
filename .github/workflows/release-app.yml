@@ -79,32 +79,8 @@ jobs:
           git pull origin main
           git push origin main
 
-  draft:
-    needs: [check_commit, generate_changelog]
-    if: github.event_name == 'workflow_dispatch' || needs.check_commit.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.commit_hash || github.ref }}
-
-      - name: Update version in Cargo.toml
-        if: github.event.inputs.commit_hash && github.event.inputs.version
-        run: |
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' 's/^version = ".*"/version = "${{ github.event.inputs.version }}"/' screenpipe-app-tauri/src-tauri/Cargo.toml
-          else
-            sed -i 's/^version = ".*"/version = "${{ github.event.inputs.version }}"/' screenpipe-app-tauri/src-tauri/Cargo.toml
-          fi
-
-      - name: create draft release
-        uses: crabnebula-dev/cloud-release@v0.2.6
-        with:
-          command: release draft ${{ secrets.CN_APP_SLUG }} --framework tauri
-          api-key: ${{ secrets.CN_API_KEY }}
-
   publish-tauri:
-    needs: [check_commit, draft]
+    needs: [check_commit]
     if: github.event_name == 'workflow_dispatch' || needs.check_commit.outputs.should_release == 'true'
     permissions:
       contents: write
@@ -120,7 +96,7 @@ jobs:
             args: "--target x86_64-apple-darwin --features metal,beta"
             target: x86_64-apple-darwin
             tauri-args: "--target x86_64-apple-darwin"
-          - platform: [self-hosted, Windows, X64] # Windows x86_64
+          - platform: [windows-latest] # Windows x86_64
             args: "--target x86_64-pc-windows-msvc --features mkl" # TODO CUDA --features "openblas"
             pre-build-args: "" # --openblas
             tauri-args: "--target x86_64-pc-windows-msvc"
